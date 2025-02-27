@@ -1,7 +1,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Play, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 
 interface CodePreviewProps {
   htmlCode: string;
@@ -22,14 +22,13 @@ export default function CodePreview({ htmlCode, cssCode = "", jsCode = "" }: Cod
       const iframe = iframeRef.current;
       if (!iframe) return;
       
-      const document = iframe.contentDocument || iframe.contentWindow?.document;
-      if (!document) return;
-      
-      document.open();
-      document.write(`
+      // Create a blob with the HTML content
+      const htmlContent = `
         <!DOCTYPE html>
         <html>
           <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
             <style>${cssCode}</style>
           </head>
           <body>
@@ -37,12 +36,20 @@ export default function CodePreview({ htmlCode, cssCode = "", jsCode = "" }: Cod
             <script>${jsCode}</script>
           </body>
         </html>
-      `);
-      document.close();
+      `;
       
-      // Handle iframe load event
+      // Create a blob URL and set it as the iframe source
+      const blob = new Blob([htmlContent], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      
+      // Set the src attribute instead of using document.write
+      iframe.src = url;
+      
+      // Clean up the URL object when iframe loads
       iframe.onload = () => {
         setIsLoading(false);
+        // Revoke the object URL to free up memory
+        setTimeout(() => URL.revokeObjectURL(url), 100);
       };
       
       // Safety timeout in case onload doesn't fire
@@ -104,7 +111,7 @@ export default function CodePreview({ htmlCode, cssCode = "", jsCode = "" }: Cod
           ref={iframeRef}
           className="w-full h-full"
           title="Code Preview"
-          sandbox="allow-scripts"
+          sandbox="allow-scripts allow-same-origin"
         ></iframe>
       </div>
     </div>
